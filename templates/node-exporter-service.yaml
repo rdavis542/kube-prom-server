@@ -1,0 +1,19 @@
+{{- if .Values.nodeExporter.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "prometheus.fullname" . }}-node-exporter
+  labels:
+    {{- include "prometheus.labels" . | nindent 4 }}
+    component: node-exporter
+spec:
+  type: {{ .Values.nodeExporter.service.type }}
+  ports:
+    - port: {{ .Values.nodeExporter.service.port }}
+      targetPort: {{ .Values.nodeExporter.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "prometheus.selectorLabels" . | nindent 4 }}
+    component: node-exporter
+{{- end }}

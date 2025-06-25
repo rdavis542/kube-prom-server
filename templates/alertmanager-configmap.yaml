@@ -1,0 +1,25 @@
+{{- if .Values.alertmanager.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "prometheus.fullname" . }}-alertmanager-config
+  labels:
+    {{- include "prometheus.labels" . | nindent 4 }}
+data:
+  config.yml: |
+    global:
+      smtp_smarthost: 'localhost:587'
+      smtp_from: 'alertmanager@example.org'
+    
+    route:
+      group_by: ['alertname']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 1h
+      receiver: 'web.hook'
+    
+    receivers:
+      - name: 'web.hook'
+        webhook_configs:
+          - url: 'http://127.0.0.1:5001/'
+{{- end }}

@@ -1,0 +1,87 @@
+prometheus:
+  image:
+    repository: prom/prometheus
+    tag: v2.45.0
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 9090
+    targetPort: 9090
+  
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: prometheus.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+  
+  persistence:
+    enabled: true
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 8Gi
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  
+  retention: "15d"
+  scrapeInterval: "15s"
+  evaluationInterval: "15s"
+
+nodeExporter:
+  enabled: true
+  image:
+    repository: prom/node-exporter
+    tag: v1.6.0
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 9100
+    targetPort: 9100
+  
+  resources:
+    limits:
+      cpu: 200m
+      memory: 50Mi
+    requests:
+      cpu: 100m
+      memory: 30Mi
+
+alertmanager:
+  enabled: true
+  image:
+    repository: prom/alertmanager
+    tag: v0.25.0
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 9093
+    targetPort: 9093
+  
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+rbac:
+  create: true
