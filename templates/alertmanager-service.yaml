@@ -1,0 +1,19 @@
+{{- if .Values.alertmanager.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "prometheus.fullname" . }}-alertmanager
+  labels:
+    {{- include "prometheus.labels" . | nindent 4 }}
+    component: alertmanager
+spec:
+  type: {{ .Values.alertmanager.service.type }}
+  ports:
+    - port: {{ .Values.alertmanager.service.port }}
+      targetPort: {{ .Values.alertmanager.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "prometheus.selectorLabels" . | nindent 4 }}
+    component: alertmanager
+{{- end }}
