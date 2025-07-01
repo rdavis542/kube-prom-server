@@ -23,7 +23,7 @@ prometheus:
   persistence:
     enabled: true
     storageClass: ""
-    accessMode: ReadWriteOnce
+    accessMode: ReadWriteMany
     size: 8Gi
   
   resources:
