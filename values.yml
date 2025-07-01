@@ -59,7 +59,7 @@ nodeExporter:
       memory: 30Mi
 
 alertmanager:
-  enabled: true
+  enabled: false
   image:
     repository: prom/alertmanager
     tag: v0.25.0
