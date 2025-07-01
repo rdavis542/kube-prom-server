@@ -6,6 +6,9 @@ metadata:
   labels:
     {{- include "prometheus.labels" . | nindent 4 }}
 spec:
+  selector:
+    matchLabels:
+      app: prometheus-server
   accessModes:
     - {{ .Values.prometheus.persistence.accessMode }}
   resources:
