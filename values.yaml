@@ -5,7 +5,7 @@ prometheus:
     pullPolicy: IfNotPresent
   
   service:
-    type: ClusterIP
+    type: LoadBalancer
     port: 9090
     targetPort: 9090
   
