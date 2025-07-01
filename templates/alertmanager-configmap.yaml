@@ -6,13 +6,17 @@ metadata:
   labels:
     {{- include "prometheus.labels" . | nindent 4 }}
 data:
-  config.yml: |
+  alertmanager.yml: |
     global:
       smtp_smarthost: 'localhost:587'
       smtp_from: 'alertmanager@example.org'
+      resolve_timeout: 5m
+    
+    templates:
+    - '/etc/alertmanager/templates/*.tmpl'
     
     route:
-      group_by: ['alertname']
+      group_by: ['alertname', 'cluster', 'service']
       group_wait: 10s
       group_interval: 10s
       repeat_interval: 1h
@@ -22,4 +26,7 @@ data:
     - name: 'web.hook'
       webhook_configs:
       - url: 'http://127.0.0.1:5001/'
+        send_resolved: true
+    
+    inhibit_rules: []
 {{- end }}
