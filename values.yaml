@@ -6,8 +6,8 @@ prometheus:
   
   service:
     type: NodePort
-    port: 9090
-    targetPort: 9090
+    port: 10090
+    targetPort: 10090
     nodePort: 30090
   
   ingress:
