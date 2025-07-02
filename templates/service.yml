@@ -9,6 +9,7 @@ spec:
   ports:
     - port: {{ .Values.prometheus.service.port }}
       targetPort: {{ .Values.prometheus.service.targetPort }}
+      nodePort: {{ .Values.prometheus.service.nodePort | default "30090" }}
       protocol: TCP
       name: http
   selector:
