@@ -43,7 +43,7 @@ nodeExporter:
   enabled: true
   image:
     repository: prom/node-exporter
-    tag: v1.6.0
+    tag: v1.9.0
     pullPolicy: IfNotPresent
   
   service:
