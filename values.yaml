@@ -25,7 +25,15 @@ prometheus:
     enabled: true
     storageClass: ""
     accessMode: ReadWriteMany
-    size: 20Gi
+    # PVC request size. This PV is statically provisioned (no StorageClass),
+    # so once the PVC is bound this value is immutable - Kubernetes has no
+    # resize path without a resizable StorageClass. Must match whatever is
+    # already live in the cluster; do not change without deleting and
+    # recreating the PVC.
+    size: 8Gi
+    # Real capacity of the underlying static PV. Independent from the PVC
+    # request above - only needs to be >= size.
+    pvSize: 20Gi
   
   resources:
     limits:
