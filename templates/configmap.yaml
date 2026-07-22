@@ -16,7 +16,8 @@ data:
     {{- if .Values.alertmanager.enabled }}
     alerting:
       alertmanagers:
-        - static_configs:
+        - api_version: v2
+          static_configs:
             - targets:
               - {{ include "prometheus.fullname" . }}-alertmanager:{{ .Values.alertmanager.service.port }}
     {{- end }}

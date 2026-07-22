@@ -7,7 +7,7 @@ metadata:
     app: prometheus-server
 spec:
   capacity:
-    storage: 20Gi
+    storage: {{ .Values.prometheus.persistence.size }}
   accessModes:
     - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain

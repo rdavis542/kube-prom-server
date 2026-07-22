@@ -1,7 +1,7 @@
 prometheus:
   image:
     repository: prom/prometheus
-    tag: v2.45.0
+    tag: v3.13.1
     pullPolicy: IfNotPresent
   
   service:
@@ -25,7 +25,7 @@ prometheus:
     enabled: true
     storageClass: ""
     accessMode: ReadWriteMany
-    size: 8Gi
+    size: 20Gi
   
   resources:
     limits:
@@ -43,7 +43,7 @@ nodeExporter:
   enabled: true
   image:
     repository: prom/node-exporter
-    tag: v1.9.0
+    tag: v1.12.1
     pullPolicy: IfNotPresent
   
   service:
@@ -63,7 +63,7 @@ alertmanager:
   enabled: false
   image:
     repository: prom/alertmanager
-    tag: v0.25.0
+    tag: v0.33.1
     pullPolicy: IfNotPresent
   
   service:
