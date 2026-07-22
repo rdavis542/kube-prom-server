@@ -25,7 +25,7 @@ prometheus:
     enabled: true
     storageClass: ""
     accessMode: ReadWriteMany
-    size: 8Gi
+    size: 20Gi
   
   resources:
     limits:
