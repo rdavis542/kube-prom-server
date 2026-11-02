@@ -93,6 +93,15 @@ data:
             action: keep
       {{- end }}
 
+      {{- if .Values.windowsExporter.enabled }}
+      - job_name: 'windows-exporter'
+        static_configs:
+          - targets:
+              {{- range .Values.windowsExporter.targets }}
+              - {{ . | quote }}
+              {{- end }}
+      {{- end }}
+
       - job_name: 'kubernetes-pods'
         kubernetes_sd_configs:
           - role: pod
