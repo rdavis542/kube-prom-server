@@ -87,6 +87,25 @@ alertmanager:
       cpu: 50m
       memory: 64Mi
 
+kubeStateMetrics:
+  enabled: true
+  image:
+    repository: registry.k8s.io/kube-state-metrics/kube-state-metrics
+    tag: v2.13.0
+    pullPolicy: IfNotPresent
+
+  service:
+    port: 8080
+    targetPort: 8080
+
+  resources:
+    limits:
+      cpu: 200m
+      memory: 200Mi
+    requests:
+      cpu: 100m
+      memory: 100Mi
+
 serviceAccount:
   create: true
   annotations: {}
