@@ -15,6 +15,7 @@ spec:
     metadata:
       labels:
         {{- include "prometheus.selectorLabels" . | nindent 8 }}
+        component: server
     spec:
       serviceAccountName: {{ include "prometheus.serviceAccountName" . }}
       containers:

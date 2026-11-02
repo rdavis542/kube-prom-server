@@ -12,5 +12,10 @@ spec:
       nodePort: {{ .Values.prometheus.service.nodePort | default "30090" }}
       protocol: TCP
       name: http
+  # component: server excludes the node-exporter DaemonSet pods, which carry
+  # the same base selectorLabels (same chart instance/name) plus their own
+  # component: node-exporter label. Without it this Service's endpoints
+  # included the node-exporter pods too, which don't listen on this port.
   selector:
     {{- include "prometheus.selectorLabels" . | nindent 4 }}
+    component: server
