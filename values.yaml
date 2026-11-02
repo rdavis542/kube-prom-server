@@ -87,6 +87,17 @@ alertmanager:
       cpu: 50m
       memory: 64Mi
 
+windowsExporter:
+  enabled: true
+  port: 9182
+  # Static scrape targets for windows_exporter instances outside the cluster
+  # (no Kubernetes service discovery for these - they're bare hosts). A DHCP
+  # IP here will silently go "down" in Prometheus if its lease changes;
+  # prefer a DHCP reservation so the address stays stable.
+  targets:
+    - "192.168.1.100:9182"  # chunk (static)
+    - "192.168.1.183:9182"  # mouth (DHCP - verify reservation)
+
 kubeStateMetrics:
   enabled: true
   image:
