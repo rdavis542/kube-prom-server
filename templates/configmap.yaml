@@ -102,6 +102,15 @@ data:
               {{- end }}
       {{- end }}
 
+      {{- if .Values.routerExporter.enabled }}
+      - job_name: 'router-exporter'
+        static_configs:
+          - targets:
+              {{- range .Values.routerExporter.targets }}
+              - {{ . | quote }}
+              {{- end }}
+      {{- end }}
+
       - job_name: 'kubernetes-pods'
         kubernetes_sd_configs:
           - role: pod

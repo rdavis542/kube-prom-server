@@ -98,6 +98,16 @@ windowsExporter:
     - "192.168.1.100:9182"  # chunk (static)
     - "192.168.1.183:9182"  # mouth (DHCP - verify reservation)
 
+routerExporter:
+  enabled: true
+  port: 9100
+  # node_exporter running under Entware on the home router (192.168.1.1).
+  # Note: this build's netdev collector doesn't report per-interface
+  # receive/transmit byte counters - only CPU, memory, load, filesystem,
+  # and interface up/down status are available.
+  targets:
+    - "192.168.1.1:9100"
+
 kubeStateMetrics:
   enabled: true
   image:
