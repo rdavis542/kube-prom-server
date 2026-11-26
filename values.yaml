@@ -76,7 +76,11 @@ processExporter:
   port: 9256
   resources:
     limits:
-      cpu: 200m
+      # Each scrape walks every thread on the host. On the workers (~3,300
+      # threads) a 200m limit throttled scrapes to 8-10s, past Prometheus's
+      # 10s timeout. Average use is only ~50m; the limit just has to allow
+      # the per-scrape burst.
+      cpu: "1"
       memory: 128Mi
     requests:
       cpu: 50m
