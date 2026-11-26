@@ -1,0 +1,19 @@
+{{- if .Values.processExporter.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "prometheus.fullname" . }}-process-exporter
+  labels:
+    {{- include "prometheus.labels" . | nindent 4 }}
+    component: process-exporter
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.processExporter.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "prometheus.selectorLabels" . | nindent 4 }}
+    component: process-exporter
+{{- end }}
