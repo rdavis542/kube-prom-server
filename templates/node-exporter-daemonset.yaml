@@ -26,8 +26,12 @@ spec:
           args:
             - --path.procfs=/host/proc
             - --path.sysfs=/host/sys
-            - --collector.filesystem.ignored-mount-points
-            - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
+            # Without the host root mounted, statfs() runs against the
+            # container's own filesystem: only / reported, every other host
+            # mount (/boot, /mnt/nfsdata, NFS clients) came back device_error.
+            - --path.rootfs=/host/root
+            - --collector.processes
+            - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run/credentials/.+|run/user/.+|var/lib/docker/.+|var/lib/kubelet/.+|var/lib/containerd/.+)($|/)
           ports:
             - name: http
               containerPort: 9100
@@ -41,6 +45,10 @@ spec:
             - name: sys
               mountPath: /host/sys
               readOnly: true
+            - name: root
+              mountPath: /host/root
+              readOnly: true
+              mountPropagation: HostToContainer
       tolerations:
         - effect: NoSchedule
           operator: Exists
@@ -51,4 +59,7 @@ spec:
         - name: sys
           hostPath:
             path: /sys
+        - name: root
+          hostPath:
+            path: /
 {{- end }}
