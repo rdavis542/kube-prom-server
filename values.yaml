@@ -67,6 +67,21 @@ nodeExporter:
       cpu: 100m
       memory: 30Mi
 
+processExporter:
+  enabled: true
+  image:
+    repository: ncabatoff/process-exporter
+    tag: v0.8.7
+    pullPolicy: IfNotPresent
+  port: 9256
+  resources:
+    limits:
+      cpu: 200m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 48Mi
+
 alertmanager:
   enabled: false
   image:

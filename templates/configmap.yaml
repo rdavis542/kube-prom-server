@@ -36,6 +36,20 @@ data:
             regex: {{ include "prometheus.fullname" . }}-node-exporter
             action: keep
       {{- end }}
+
+      {{- if .Values.processExporter.enabled }}
+      - job_name: 'process-exporter'
+        kubernetes_sd_configs:
+          - role: endpoints
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_endpoints_name]
+            regex: {{ include "prometheus.fullname" . }}-process-exporter
+            action: keep
+          # Kubernetes node name equals node_uname_info's nodename, which is
+          # what the Linux host dashboard's Host dropdown selects on.
+          - source_labels: [__meta_kubernetes_endpoint_node_name]
+            target_label: node
+      {{- end }}
       
       - job_name: 'kubernetes-apiservers'
         kubernetes_sd_configs:
