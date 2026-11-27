@@ -131,6 +131,45 @@ data:
               {{- end }}
       {{- end }}
 
+      {{- if .Values.blackboxExporter.enabled }}
+      # One job for every probe: the module and display name ride along as
+      # target labels, and the probed address becomes the instance label.
+      - job_name: 'blackbox'
+        metrics_path: /probe
+        static_configs:
+          {{- range .Values.blackboxExporter.targets }}
+          - targets: [{{ .target | quote }}]
+            labels:
+              module: {{ .module | quote }}
+              name: {{ .name | quote }}
+              scope: {{ .scope | quote }}
+          {{- end }}
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: __param_target
+          - source_labels: [module]
+            target_label: __param_module
+          - source_labels: [__param_target]
+            target_label: instance
+          - target_label: __address__
+            replacement: {{ include "prometheus.fullname" . }}-blackbox-exporter:9115
+
+      # The exporter itself (probe counts, config reload status).
+      - job_name: 'blackbox-exporter'
+        static_configs:
+          - targets: ['{{ include "prometheus.fullname" . }}-blackbox-exporter:9115']
+      {{- end }}
+
+      {{- if .Values.speedtestExporter.enabled }}
+      # The scrape that triggers a new test blocks until the test ends
+      # (about 20-40s), so give it most of the interval as timeout.
+      - job_name: 'speedtest'
+        scrape_interval: 2m
+        scrape_timeout: 110s
+        static_configs:
+          - targets: ['{{ include "prometheus.fullname" . }}-speedtest-exporter:9798']
+      {{- end }}
+
       - job_name: 'kubernetes-pods'
         kubernetes_sd_configs:
           - role: pod

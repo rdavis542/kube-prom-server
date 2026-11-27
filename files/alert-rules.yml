@@ -246,6 +246,47 @@ groups:
           summary: 'MetalLB pool {{ $labels.pool }} is {{ $value | humanizePercentage }} allocated'
           description: 'New LoadBalancer Services will not get an IP once the pool is exhausted.'
 
+  # Blackbox probes. Discord is on the far side of the internet link, so an
+  # InternetDown alert is delivered once the link is back (Alertmanager keeps
+  # retrying), usually together with its "resolved".
+  - name: network
+    rules:
+      - alert: InternetDown
+        expr: sum(probe_success{module="icmp", scope="internet"}) == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Internet is down'
+          description: 'The ISP gateway and both public DNS servers have stopped answering pings.'
+
+      - alert: InternetPacketLoss
+        expr: 1 - avg(avg_over_time(probe_success{module="icmp", scope="internet"}[10m])) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Internet packet loss at {{ $value | humanizePercentage }}'
+          description: 'More than 10% of pings to the ISP gateway and public DNS servers have failed over the last 10 minutes.'
+
+      - alert: InternetHighLatency
+        expr: avg(avg_over_time(probe_icmp_duration_seconds{phase="rtt", scope="internet"}[10m])) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Internet latency at {{ $value | humanizeDuration }}'
+          description: 'Average ping to the ISP gateway and public DNS servers has been over 100ms for 10 minutes (normal is under 10ms).'
+
+      - alert: ProbeFailed
+        expr: probe_success == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.name }} ({{ $labels.module }}) is failing'
+          description: 'The {{ $labels.module }} probe of {{ $labels.instance }} has failed for 5 minutes.'
+
   - name: monitoring
     rules:
       - alert: PrometheusConfigReloadFailed

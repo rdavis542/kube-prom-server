@@ -1,0 +1,75 @@
+{{- if .Values.speedtestExporter.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "prometheus.fullname" . }}-speedtest-exporter
+  labels:
+    {{- include "prometheus.labels" . | nindent 4 }}
+    component: speedtest-exporter
+spec:
+  replicas: 1
+  # Never run two at once: overlapping tests would halve each other's result.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "prometheus.selectorLabels" . | nindent 6 }}
+      component: speedtest-exporter
+  template:
+    metadata:
+      labels:
+        {{- include "prometheus.selectorLabels" . | nindent 8 }}
+        component: speedtest-exporter
+    spec:
+      containers:
+        - name: speedtest-exporter
+          image: "{{ .Values.speedtestExporter.image.repository }}:{{ .Values.speedtestExporter.image.tag }}"
+          imagePullPolicy: {{ .Values.speedtestExporter.image.pullPolicy }}
+          env:
+            # A test runs on the first scrape after the cache expires; every
+            # scrape in between returns the last result.
+            - name: SPEEDTEST_CACHE_FOR
+              value: {{ .Values.speedtestExporter.testEverySeconds | quote }}
+            - name: SPEEDTEST_TIMEOUT
+              value: "90"
+          ports:
+            - name: http
+              containerPort: 9798
+              protocol: TCP
+          # TCP only: the HTTP endpoint can block for a whole test.
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 15
+          # The image already runs as its own non-root "speedtest" user. The
+          # root filesystem stays writable: the Ookla CLI records its license
+          # acceptance under that user's home directory.
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            {{- toYaml .Values.speedtestExporter.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "prometheus.fullname" . }}-speedtest-exporter
+  labels:
+    {{- include "prometheus.labels" . | nindent 4 }}
+    component: speedtest-exporter
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9798
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "prometheus.selectorLabels" . | nindent 4 }}
+    component: speedtest-exporter
+{{- end }}
