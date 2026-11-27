@@ -1,0 +1,282 @@
+# Prometheus alerting rules. Loaded raw via .Files.Get so the {{ }} below are
+# Prometheus templates, not Helm.
+#
+# Severities: critical (something is down), warning (degrading, look soon),
+# info (worth knowing, no action needed). Routing per severity lives in
+# files/alertmanager.yml.
+#
+# Host alerts resolve the instance to a hostname with last_over_time(...[1d])
+# so the name is still available after the host stops reporting.
+groups:
+  - name: hosts
+    rules:
+      - alert: HostDown
+        expr: up{job=~"node-exporter|router-exporter|windows-exporter"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: '{{ $h := $labels.instance }}{{ with query (printf `last_over_time(node_uname_info{instance="%s"}[1d])` $labels.instance) }}{{ $h = . | first | label "nodename" }}{{ else }}{{ with query (printf `last_over_time(windows_os_hostname{instance="%s"}[1d])` $labels.instance) }}{{ $h = . | first | label "hostname" }}{{ end }}{{ end }}{{ $h }} is down'
+          description: 'Prometheus has not been able to scrape {{ $labels.job }} on {{ $labels.instance }} for 5 minutes. The host is off, hung, or unreachable.'
+
+      - alert: HostRebooted
+        expr: (time() - node_boot_time_seconds < 900) or (time() - windows_system_boot_time_timestamp < 900)
+        labels:
+          severity: info
+        annotations:
+          summary: '{{ $h := $labels.instance }}{{ with query (printf `node_uname_info{instance="%s"}` $labels.instance) }}{{ $h = . | first | label "nodename" }}{{ else }}{{ with query (printf `windows_os_hostname{instance="%s"}` $labels.instance) }}{{ $h = . | first | label "hostname" }}{{ end }}{{ end }}{{ $h }} rebooted'
+          description: 'Up for {{ $value | humanizeDuration }}.'
+
+      - alert: HostHighCpu
+        expr: |
+          (1 - avg by (instance, job) (rate(node_cpu_seconds_total{mode="idle"}[5m])) > 0.9)
+          or
+          (1 - avg by (instance, job) (rate(windows_cpu_time_seconds_total{mode="idle"}[5m])) > 0.9)
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.instance }} CPU at {{ $value | humanizePercentage }}'
+          description: 'CPU has been above 90% for 15 minutes.'
+
+      - alert: HostLowMemory
+        expr: |
+          (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10)
+          or
+          (windows_memory_available_bytes / windows_memory_physical_total_bytes < 0.10)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.instance }} has {{ $value | humanizePercentage }} memory available'
+          description: 'Available memory has been under 10% for 10 minutes.'
+
+      - alert: HostOomKill
+        expr: increase(node_vmstat_oom_kill[15m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.instance }}: kernel OOM-killed a process'
+          description: '{{ $value | printf "%.0f" }} OOM kill(s) in the last 15 minutes. Check the Top processes panel for what grew.'
+
+      - alert: HostDiskSpaceLow
+        expr: |
+          (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs|squashfs|nsfs|overlay|devtmpfs|efivarfs|nfs.*"}
+             / node_filesystem_size_bytes{fstype!~"tmpfs|ramfs|squashfs|nsfs|overlay|devtmpfs|efivarfs|nfs.*"} > 0.85)
+          or
+          (1 - windows_logical_disk_free_bytes{volume!~"HarddiskVolume.*"}
+             / windows_logical_disk_size_bytes{volume!~"HarddiskVolume.*"} > 0.85)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.instance }} {{ $labels.mountpoint }}{{ $labels.volume }} is {{ $value | humanizePercentage }} full'
+          description: 'Filesystem usage has been above 85% for 10 minutes.'
+
+      - alert: HostDiskSpaceCritical
+        expr: |
+          (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs|squashfs|nsfs|overlay|devtmpfs|efivarfs|nfs.*"}
+             / node_filesystem_size_bytes{fstype!~"tmpfs|ramfs|squashfs|nsfs|overlay|devtmpfs|efivarfs|nfs.*"} > 0.95)
+          or
+          (1 - windows_logical_disk_free_bytes{volume!~"HarddiskVolume.*"}
+             / windows_logical_disk_size_bytes{volume!~"HarddiskVolume.*"} > 0.95)
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: '{{ $labels.instance }} {{ $labels.mountpoint }}{{ $labels.volume }} is {{ $value | humanizePercentage }} full'
+          description: 'Filesystem usage is above 95%. Writes will start failing soon.'
+
+      - alert: HostDiskWillFillIn24h
+        expr: |
+          predict_linear(node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs|squashfs|nsfs|overlay|devtmpfs|efivarfs|nfs.*"}[6h], 86400) < 0
+          and
+          (1 - node_filesystem_avail_bytes / node_filesystem_size_bytes > 0.7)
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.instance }} {{ $labels.mountpoint }} will fill within 24h at the current rate'
+          description: 'Based on the last 6 hours of growth. Already over 70% used.'
+
+      - alert: HostFilesystemReadOnly
+        expr: node_filesystem_readonly{fstype=~"xfs|ext4|btrfs|vfat"} == 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: '{{ $labels.instance }} {{ $labels.mountpoint }} is read-only'
+          description: 'A normally writable filesystem was remounted read-only, usually after disk or filesystem errors.'
+
+      - alert: HostHighTemperature
+        expr: node_hwmon_temp_celsius > 85 or node_thermal_zone_temp > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.instance }} {{ $labels.chip }}{{ $labels.zone }} at {{ $value | printf "%.0f" }}°C'
+          description: 'Sensor has been above its threshold (85°C hwmon, 90°C thermal zone) for 10 minutes.'
+
+  - name: kubernetes
+    rules:
+      - alert: KubeAPIServerDown
+        expr: up{job="kubernetes-apiservers"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Kubernetes API server {{ $labels.instance }} is down'
+          description: 'kubectl, controllers and anything that talks to the API will fail. Running pods keep running.'
+
+      - alert: KubeNodeNotReady
+        expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Node {{ $labels.node }} is NotReady'
+          description: 'The kubelet on {{ $labels.node }} has not reported Ready for 5 minutes.'
+
+      - alert: KubePodCrashLooping
+        expr: increase(kube_pod_container_status_restarts_total[30m]) > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.namespace }}/{{ $labels.pod }} is restarting repeatedly'
+          description: 'Container {{ $labels.container }} restarted {{ $value | printf "%.0f" }} times in the last 30 minutes.'
+
+      - alert: KubePodNotRunning
+        expr: sum by (namespace, pod) (kube_pod_status_phase{phase=~"Pending|Unknown|Failed"}) > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.namespace }}/{{ $labels.pod }} has not been running for 15 minutes'
+          description: 'The pod is stuck Pending, Unknown or Failed.'
+
+      - alert: KubeDeploymentReplicasMismatch
+        expr: kube_deployment_spec_replicas != kube_deployment_status_replicas_available
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Deployment {{ $labels.namespace }}/{{ $labels.deployment }} is short of replicas'
+          description: 'Available replicas have not matched the desired count for 15 minutes.'
+
+      - alert: KubeStatefulSetReplicasMismatch
+        expr: kube_statefulset_status_replicas_ready != kube_statefulset_replicas
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'StatefulSet {{ $labels.namespace }}/{{ $labels.statefulset }} is short of ready replicas'
+          description: 'Ready replicas have not matched the desired count for 15 minutes.'
+
+      - alert: KubeDaemonSetNotReady
+        expr: kube_daemonset_status_number_ready < kube_daemonset_status_desired_number_scheduled
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'DaemonSet {{ $labels.namespace }}/{{ $labels.daemonset }} is not ready on every node'
+          description: '{{ $value | printf "%.0f" }} pods ready, fewer than desired, for 15 minutes.'
+
+      - alert: ExporterDown
+        expr: up{job!~"node-exporter|router-exporter|windows-exporter|kubernetes-apiservers"} == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.job }} target {{ $labels.kubernetes_pod_name }}{{ $labels.node }} ({{ $labels.instance }}) is down'
+          description: 'Prometheus has not been able to scrape this target for 10 minutes, so its metrics (and alerts based on them) are missing.'
+
+  - name: services
+    rules:
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'PostgreSQL is down'
+          description: 'postgres_exporter cannot connect to the database on {{ $labels.kubernetes_pod_name }}.'
+
+      - alert: PostgresTooManyConnections
+        expr: sum by (instance) (pg_stat_database_numbackends) / on (instance) pg_settings_max_connections > 0.8
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'PostgreSQL is using {{ $value | humanizePercentage }} of max_connections'
+          description: 'New connections will be refused once max_connections is reached.'
+
+      - alert: PostgresDeadlocks
+        expr: increase(pg_stat_database_deadlocks[10m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: 'PostgreSQL deadlocks in database {{ $labels.datname }}'
+          description: '{{ $value | printf "%.0f" }} deadlock(s) in the last 10 minutes.'
+
+      - alert: ArgoCDAppUnhealthy
+        expr: argocd_app_info{health_status!~"Healthy|Progressing"} == 1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'ArgoCD app {{ $labels.name }} is {{ $labels.health_status }}'
+          description: 'Sync status: {{ $labels.sync_status }}. Destination namespace: {{ $labels.dest_namespace }}.'
+
+      - alert: MetalLBConfigStale
+        expr: metallb_k8s_client_config_stale_bool == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'MetalLB speaker {{ $labels.kubernetes_pod_name }} is running a stale config'
+          description: 'The speaker failed to load the latest MetalLB configuration.'
+
+      - alert: MetalLBAddressPoolNearlyFull
+        expr: metallb_allocator_addresses_in_use_total / metallb_allocator_addresses_total > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'MetalLB pool {{ $labels.pool }} is {{ $value | humanizePercentage }} allocated'
+          description: 'New LoadBalancer Services will not get an IP once the pool is exhausted.'
+
+  - name: monitoring
+    rules:
+      - alert: PrometheusConfigReloadFailed
+        expr: prometheus_config_last_reload_successful == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Prometheus failed to reload its configuration'
+          description: 'Prometheus is still running the previous config. Check its logs for the parse error.'
+
+      - alert: PrometheusRuleEvaluationFailures
+        expr: increase(prometheus_rule_evaluation_failures_total[10m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Prometheus rule group {{ $labels.rule_group }} is failing to evaluate'
+          description: 'Alerts in this group may not fire.'
+
+      - alert: PrometheusNotificationsFailing
+        expr: increase(prometheus_notifications_errors_total[10m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Prometheus cannot deliver alerts to Alertmanager'
+          description: '{{ $value | printf "%.0f" }} failed sends in the last 10 minutes.'
+
+      - alert: AlertmanagerNotificationsFailing
+        expr: increase(alertmanager_notifications_failed_total[10m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Alertmanager is failing to send {{ $labels.integration }} notifications'
+          description: '{{ $value | printf "%.0f" }} failed sends in the last 10 minutes. Check the webhook URL in the alertmanager-discord Secret.'

@@ -11,7 +11,7 @@ data:
       evaluation_interval: {{ .Values.prometheus.evaluationInterval }}
     
     rule_files:
-      - "/etc/prometheus/rules/*.yml"
+      - "/etc/prometheus/alert-rules.yml"
     
     {{- if .Values.alertmanager.enabled }}
     alerting:
@@ -26,7 +26,13 @@ data:
       - job_name: 'prometheus'
         static_configs:
           - targets: ['localhost:10090']
-      
+
+      {{- if .Values.alertmanager.enabled }}
+      - job_name: 'alertmanager'
+        static_configs:
+          - targets: ['{{ include "prometheus.fullname" . }}-alertmanager:{{ .Values.alertmanager.service.port }}']
+      {{- end }}
+
       {{- if .Values.nodeExporter.enabled }}
       - job_name: 'node-exporter'
         kubernetes_sd_configs:
@@ -149,3 +155,5 @@ data:
           - source_labels: [__meta_kubernetes_pod_name]
             action: replace
             target_label: kubernetes_pod_name
+  alert-rules.yml: |
+    {{- .Files.Get "files/alert-rules.yml" | nindent 4 }}

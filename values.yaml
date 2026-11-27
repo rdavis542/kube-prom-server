@@ -87,12 +87,20 @@ processExporter:
       memory: 48Mi
 
 alertmanager:
-  enabled: false
+  enabled: true
   image:
     repository: prom/alertmanager
     tag: v0.33.1
     pullPolicy: IfNotPresent
-  
+
+  # Discord channel webhook URL, stored in a Secret created by hand so it
+  # never lands in git:
+  #   kubectl create secret generic alertmanager-discord -n prometheus \
+  #     --from-literal=webhook-url='https://discord.com/api/webhooks/...'
+  discord:
+    existingSecret: alertmanager-discord
+    secretKey: webhook-url
+
   service:
     type: ClusterIP
     port: 9093

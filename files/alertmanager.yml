@@ -1,0 +1,41 @@
+# Alertmanager configuration. Loaded raw via .Files.Get so Go templates pass
+# through untouched. The Discord webhook URL is never in this file: it is read
+# at send time from the Secret mounted at /etc/alertmanager/secrets.
+route:
+  receiver: discord
+  group_by: ['alertname']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  routes:
+    - matchers: ['severity="critical"']
+      receiver: discord
+      repeat_interval: 4h
+    # Reboots and similar: tell once, don't re-send or post a "resolved".
+    - matchers: ['severity="info"']
+      receiver: discord-info
+      repeat_interval: 168h
+
+receivers:
+  - name: discord
+    discord_configs:
+      - webhook_url_file: /etc/alertmanager/secrets/webhook-url
+        send_resolved: true
+        title: '{{ template "goonies.discord.title" . }}'
+        message: '{{ template "goonies.discord.message" . }}'
+  - name: discord-info
+    discord_configs:
+      - webhook_url_file: /etc/alertmanager/secrets/webhook-url
+        send_resolved: false
+        title: '{{ template "goonies.discord.title" . }}'
+        message: '{{ template "goonies.discord.message" . }}'
+
+templates:
+  - /etc/alertmanager/config/*.tmpl
+
+inhibit_rules:
+  # A down host takes its exporters, pods and per-host warnings with it;
+  # only the HostDown alert is worth sending.
+  - source_matchers: ['alertname="HostDown"']
+    target_matchers: ['severity=~"warning|info"']
+    equal: ['instance']

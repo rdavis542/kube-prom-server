@@ -1,0 +1,12 @@
+{{ define "goonies.discord.title" -}}
+[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}{{ with .CommonLabels.severity }} ({{ . }}){{ end }}
+{{- end }}
+
+{{ define "goonies.discord.message" -}}
+{{ range .Alerts.Firing }}**{{ .Annotations.summary }}**
+{{ .Annotations.description }}
+{{ end }}
+{{- if .Alerts.Resolved }}{{ if .Alerts.Firing }}
+{{ end }}{{ range .Alerts.Resolved }}Resolved: {{ .Annotations.summary }}
+{{ end }}{{ end }}
+{{- end }}

@@ -14,22 +14,3 @@ spec:
   hostPath:
     path: /mnt/nfsdata/data/k8s/prometheus
     type: DirectoryOrCreate
-
-
----
-# Static NFS PersistentVolume for Alertmanager
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: prometheus-alertmanager-nfs-pv
-  labels:
-    app: prometheus-alertmanager
-spec:
-  capacity:
-    storage: 5Gi
-  accessModes:
-    - ReadWriteMany
-  persistentVolumeReclaimPolicy: Retain
-  hostPath:
-    path: /mnt/nfsdata/data/k8s/prometheus/alertmanager
-    type: DirectoryOrCreate
