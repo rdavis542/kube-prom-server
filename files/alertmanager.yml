@@ -39,3 +39,9 @@ inhibit_rules:
   - source_matchers: ['alertname="HostDown"']
     target_matchers: ['severity=~"warning|info"']
     equal: ['instance']
+  # When the whole link is down, the per-target internet probe failures are
+  # just noise.
+  - source_matchers: ['alertname="InternetDown"']
+    target_matchers: ['alertname="ProbeFailed"', 'scope="internet"']
+  - source_matchers: ['alertname="InternetDown"']
+    target_matchers: ['alertname=~"InternetPacketLoss|InternetHighLatency"']

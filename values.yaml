@@ -135,6 +135,60 @@ routerExporter:
   targets:
     - "192.168.1.1:9100"
 
+blackboxExporter:
+  enabled: true
+  image:
+    repository: prom/blackbox-exporter
+    tag: v0.29.1
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 100m
+      memory: 64Mi
+    requests:
+      cpu: 20m
+      memory: 32Mi
+  # Each target is probed every scrape interval with the named module from
+  # files/blackbox.yml. "scope" drives the alerts: when every "internet"
+  # ping fails at once, one InternetDown alert fires instead of a ProbeFailed
+  # per target. Hosts with their own exporter (nodes, chunk, mouth) are left
+  # out - HostDown already covers them.
+  targets:
+    # Internet path: ISP gateway (router WAN next hop) and public resolvers.
+    - { name: "ISP gateway",      module: icmp, scope: internet, target: "100.7.47.1" }
+    - { name: "Cloudflare DNS",   module: icmp, scope: internet, target: "1.1.1.1" }
+    - { name: "Google DNS",       module: icmp, scope: internet, target: "8.8.8.8" }
+    - { name: "Google",           module: http_2xx, scope: internet, target: "https://www.google.com" }
+    - { name: "Cloudflare",       module: http_2xx, scope: internet, target: "https://www.cloudflare.com" }
+    # DNS resolution: the router's resolver (what LAN clients use) and two public ones.
+    - { name: "Router DNS",       module: dns, scope: lan,      target: "192.168.1.1" }
+    - { name: "Cloudflare DNS",   module: dns, scope: internet, target: "1.1.1.1" }
+    - { name: "Google DNS",       module: dns, scope: internet, target: "8.8.8.8" }
+    # LAN services.
+    - { name: "Router UI",        module: http_2xx_selfsigned, scope: lan, target: "https://192.168.1.1:8443" }
+    - { name: "Grafana",          module: http_2xx,            scope: lan, target: "http://192.168.1.22/api/health" }
+    - { name: "ArgoCD",           module: http_2xx_selfsigned, scope: lan, target: "https://192.168.1.25/healthz" }
+    - { name: "Postgres",         module: tcp_connect,         scope: lan, target: "192.168.1.21:5432" }
+
+speedtestExporter:
+  enabled: true
+  # Last release is from 2023 (bundles Ookla speedtest CLI 1.2.0). Tested
+  # working on this network 2026-11-26.
+  image:
+    repository: miguelndecarvalho/speedtest-exporter
+    tag: v3.5.4
+    pullPolicy: IfNotPresent
+  # One test moves about 1.7 GB on this ~1 Gbps line (measured 2026-11-26),
+  # so every 4 hours is ~10 GB/day, ~300 GB/month.
+  testEverySeconds: 14400
+  resources:
+    limits:
+      cpu: "1"
+      memory: 128Mi
+    requests:
+      cpu: 10m
+      memory: 48Mi
+
 kubeStateMetrics:
   enabled: true
   image:
