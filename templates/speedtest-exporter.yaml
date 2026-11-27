@@ -32,6 +32,10 @@ spec:
               value: {{ .Values.speedtestExporter.testEverySeconds | quote }}
             - name: SPEEDTEST_TIMEOUT
               value: "90"
+            {{- with .Values.speedtestExporter.server }}
+            - name: SPEEDTEST_SERVER
+              value: {{ . | quote }}
+            {{- end }}
           ports:
             - name: http
               containerPort: 9798
