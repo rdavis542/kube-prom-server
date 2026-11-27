@@ -181,6 +181,14 @@ speedtestExporter:
   # One test moves about 1.7 GB on this ~1 Gbps line (measured 2026-11-26),
   # so every 4 hours is ~10 GB/day, ~300 GB/month.
   testEverySeconds: 14400
+  # Ookla server ID to test against (list them with `speedtest -L`). Left
+  # empty, the CLI picks the lowest-ping server, which here is Verizon
+  # Richmond (30810) - and that server caps downloads at ~515 Mbps on this
+  # 1 Gbps line. Measured 2026-11-26 from goonies: FiberLync 890/802,
+  # Internet Subway 863/777, VA SkyWire 847/820, Comcast 866/707 (down/up
+  # Mbps). If this server is retired, tests fail with speedtest_up=0; pick
+  # another from the list.
+  server: "39263"  # FiberLync, Orange VA
   resources:
     limits:
       cpu: "1"
